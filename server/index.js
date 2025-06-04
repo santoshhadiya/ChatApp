@@ -1,8 +1,10 @@
 const http = require("http");
 const express = require("express");
 const { Server } = require("socket.io");
-
+const mongoose = require("mongoose");
+const cors = require("cors");
 const app = express();
+const chatsRouter=require("./Router/chatsRouter")
 
 let allRooms = [];
 let roomUsers={};
@@ -16,6 +18,8 @@ const io = new Server(server, {
 
 //Middel
 app.use(express.static("public"));
+app.use(express.json());
+app.use(cors())
 
 io.on("connection", (socket) => {
 
@@ -23,6 +27,7 @@ io.on("connection", (socket) => {
 
   socket.on("join", (data) => {
     socket.userName = data.userName;
+    
   });
 
  socket.on("joinRoom", (data) => {
@@ -39,6 +44,7 @@ io.on("connection", (socket) => {
   }
 
   // Send updated user list to room
+ 
   io.to(room).emit("roomUsers", roomUsers[room]);
 
   console.log(`${socket.userName} joined room ${room}`);
@@ -59,6 +65,7 @@ socket.on("disconnect", () => {
 
   socket.on("sendMsg", (data) => {
     io.to(socket.currentRoom).emit("sendMsg", {
+      room:data.room,
       message: data.msg,
       user: socket.userName,
       auth: socket.id,
@@ -72,6 +79,18 @@ socket.on("disconnect", () => {
     }
   });
 });
+
+
+app.use("/chats", chatsRouter);
+
+
+
+//connection
+mongoose.connect("mongodb://localhost:27017/chatapp")
+.then(() => console.log("MongoDB connected successfully!"))
+.catch((err) => console.error("MongoDB connection error:", err));
+
+app
 
 server.listen(3000, () => {
   console.log("Running at 3000");
