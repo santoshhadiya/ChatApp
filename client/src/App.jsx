@@ -169,7 +169,7 @@ const App = () => {
                   <p className="text-sm text-gray-600">Welcome back,</p>
                   <h2 className="text-lg font-semibold text-indigo-700">{fullName}</h2>
                 </div>
-                <UserButton afterSignOutUrl="/sign-in" />
+                <UserButton/>
               </div>
             </SignedIn>
           </header>
