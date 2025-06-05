@@ -31,7 +31,7 @@ const App = () => {
   }, [userName])
 
   useEffect(() => {
-    socket = io('http://localhost:3000');
+    socket = io(`${BACKEND_URL}`);
     socket.on("connect", () => {
       setTmp("Connected with Socket id: " + socket.id)
     });
