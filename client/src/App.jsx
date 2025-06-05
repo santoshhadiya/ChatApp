@@ -2,7 +2,7 @@ import React from 'react'
 import { useState } from 'react';
 import { useEffect } from 'react';
 import { io } from 'socket.io-client';
-import { SignedIn, SignedOut, SignInButton, UserButton, useUser, SignIn, RedirectToSignIn, SignUp } from "@clerk/clerk-react";
+import { SignedIn, SignedOut, SignInButton, UserButton, useUser, SignIn, RedirectToSignIn, SignUp, SSOCallback } from "@clerk/clerk-react";
 import axios from 'axios';
 
 
@@ -10,6 +10,8 @@ const BACKEND_URL = "https://chatapp-backend-0qe8.onrender.com";
 
 let socket;
 const App = () => {
+  const path = window.location.pathname;
+
   const [tmp, setTmp] = useState("");
   const [msg, setMsg] = useState("");
   const [userName, setUserName] = useState("");
@@ -59,10 +61,10 @@ const App = () => {
     })
 
     socket.on("addRoomList", (data) => {
-     /*  setAllRooms((prev) => {
-        const exists = prev.some((r) => r.roomName === data.room);
-        return exists ? prev : [...prev, { roomName: data.room }];
-      });  */
+      /*  setAllRooms((prev) => {
+         const exists = prev.some((r) => r.roomName === data.room);
+         return exists ? prev : [...prev, { roomName: data.room }];
+       });  */
     });
 
     socket.on("roomList", (data) => {
@@ -95,12 +97,12 @@ const App = () => {
   const joinRoom = () => {
     socket.emit("joinRoom", { room });
     SetChats([]);
-     setAllRooms((prev) => {
-        const exists = prev.some((r) => r.roomName === room);
-        return exists ? prev : [...prev, { roomName: room }];
-      }); /*  */
+    setAllRooms((prev) => {
+      const exists = prev.some((r) => r.roomName === room);
+      return exists ? prev : [...prev, { roomName: room }];
+    }); /*  */
     socket.emit("addRoomList", { room });
-   
+
   }
 
   useEffect(() => {
@@ -134,6 +136,9 @@ const App = () => {
     SetChats(res.data);
 
 
+  }
+  if (path === "/sso-callback") {
+    return <SSOCallback />;
   }
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -169,7 +174,7 @@ const App = () => {
                   <p className="text-sm text-gray-600">Welcome back,</p>
                   <h2 className="text-lg font-semibold text-indigo-700">{fullName}</h2>
                 </div>
-                <UserButton/>
+                <UserButton />
               </div>
             </SignedIn>
           </header>
