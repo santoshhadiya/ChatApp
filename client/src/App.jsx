@@ -6,7 +6,7 @@ import { SignedIn, SignedOut, SignInButton, UserButton, useUser, SignIn, Redirec
 import axios from 'axios';
 
 
-const BACKEND_URL = "http://localhost:3000";
+const BACKEND_URL = "https://chatapp-backend-0qe8.onrender.com";
 
 let socket;
 const App = () => {
