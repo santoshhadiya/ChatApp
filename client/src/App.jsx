@@ -100,7 +100,7 @@ const App = () => {
         return exists ? prev : [...prev, { roomName: room }];
       }); /*  */
     socket.emit("addRoomList", { room });
-    getRoomData(room);
+   
   }
 
   useEffect(() => {
@@ -128,7 +128,8 @@ const App = () => {
   };
 
   const getRoomData = async (roomName) => {
-
+    setRoom(roomName);
+    joinRoom();
     const res = await axios.post(`${BACKEND_URL}/chats/roomChats`, { roomName });
     SetChats(res.data);
 
@@ -205,7 +206,7 @@ const App = () => {
                   {allRooms.map((val, index) => (
                     <li
                       key={index}
-                      onClick={() => setRoom(val.roomName)}
+                      onClick={() => getRoomData(val.roomName)}
                       className={`p-2 rounded-lg cursor-pointer transition ${room === val.roomName ? 'bg-indigo-100 text-indigo-700' : 'hover:bg-gray-100'}`}
                     >
                       <div className="flex items-center">
