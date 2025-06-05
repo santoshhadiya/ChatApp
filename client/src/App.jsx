@@ -2,16 +2,12 @@ import React from 'react'
 import { useState } from 'react';
 import { useEffect } from 'react';
 import { io } from 'socket.io-client';
-import { SignedIn, SignedOut, SignInButton, UserButton, useUser, SignIn, RedirectToSignIn, SignUp, SSOCallback } from "@clerk/clerk-react";
 import axios from 'axios';
-
 
 const BACKEND_URL = "https://chatapp-backend-0qe8.onrender.com";
 
 let socket;
 const App = () => {
-  const path = window.location.pathname;
-
   const [tmp, setTmp] = useState("");
   const [msg, setMsg] = useState("");
   const [userName, setUserName] = useState("");
@@ -20,17 +16,19 @@ const App = () => {
   const [room, setRoom] = useState("");
   const [allRooms, setAllRooms] = useState([]);
   const [roomUsers, setRoomUsers] = useState([]);
-
-  const { isLoaded, user } = useUser();
-  let fullName = user?.fullName;
+  
+  // Login state
+  const [isLogin, setIsLogin] = useState(false);
+  const [loginForm, setLoginForm] = useState({
+    username: '',
+    password: '' // In a real app, never handle passwords like this without proper security
+  });
 
   useEffect(() => {
-    fullName = user?.fullName;
-    if (fullName) {
-      setUserName(fullName);
+    if (userName) {
       join();
     }
-  }, [user])
+  }, [userName])
 
   useEffect(() => {
     socket = io('http://localhost:3000');
@@ -39,8 +37,6 @@ const App = () => {
     });
 
     socket.on("sendMsg", async (data) => {
-
-
       try {
         const res = await axios.post(`${BACKEND_URL}/chats`, {
           room: data.room,
@@ -51,20 +47,23 @@ const App = () => {
         console.log(res.data);
         const result = res.data;
 
-        SetChats((prev) => [...prev, { room: result.room, message: result.message, user: result.user, auth: result.auth == socket.id }]);
+        SetChats((prev) => [...prev, { 
+          room: result.room, 
+          message: result.message, 
+          user: result.user, 
+          auth: result.auth == socket.id 
+        }]);
 
       } catch (err) {
         console.error("Post error:", err);
       }
-
-
     })
 
     socket.on("addRoomList", (data) => {
-      /*  setAllRooms((prev) => {
-         const exists = prev.some((r) => r.roomName === data.room);
-         return exists ? prev : [...prev, { roomName: data.room }];
-       });  */
+      /* setAllRooms((prev) => {
+        const exists = prev.some((r) => r.roomName === data.room);
+        return exists ? prev : [...prev, { roomName: data.room }];
+      }); */
     });
 
     socket.on("roomList", (data) => {
@@ -86,12 +85,11 @@ const App = () => {
   }
 
   const join = () => {
-    if (fullName) {
-      socket.emit("join", { userName: fullName });
+    if (userName) {
+      socket.emit("join", { userName });
       setIsJoined(true);
       getChats();
     };
-
   }
 
   const joinRoom = () => {
@@ -100,9 +98,8 @@ const App = () => {
     setAllRooms((prev) => {
       const exists = prev.some((r) => r.roomName === room);
       return exists ? prev : [...prev, { roomName: room }];
-    }); /*  */
+    });
     socket.emit("addRoomList", { room });
-
   }
 
   useEffect(() => {
@@ -112,17 +109,14 @@ const App = () => {
     }
   }, [chats]);
 
-
-
   const getChats = async () => {
     try {
-      const res = await axios.post(`${BACKEND_URL}/chats/userChats`, { fullName });
+      const res = await axios.post(`${BACKEND_URL}/chats/userChats`, { fullName: userName });
       const result = res.data;
 
       const uniqueRooms = [...new Set(result.map(val => val.room))];
       const roomObjects = uniqueRooms.map(room => ({ roomName: room }));
       setAllRooms(roomObjects);
-
 
     } catch (err) {
       console.error("Error:", err);
@@ -134,27 +128,78 @@ const App = () => {
     joinRoom();
     const res = await axios.post(`${BACKEND_URL}/chats/roomChats`, { roomName });
     SetChats(res.data);
-
-
   }
-  if (path === "/sso-callback") {
-    return <SSOCallback />;
-  }
+
+  // Handle login form changes
+  const handleLoginChange = (e) => {
+    const { name, value } = e.target;
+    setLoginForm(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  // Handle login submission
+  const handleLogin = (e) => {
+    e.preventDefault();
+    // In a real app, you would verify credentials properly
+    setUserName(loginForm.username);
+    setIsLogin(true);
+    setIsJoined(true);
+  };
+
+  // Handle logout
+  const handleLogout = () => {
+    setUserName("");
+    setIsLogin(false);
+    setIsJoined(false);
+    setLoginForm({ username: '', password: '' });
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      {/* Join Section */}
-      {!isJoined ? (
-
+      {/* Login Section */}
+      {!isLogin ? (
         <div className="flex justify-center items-center min-h-screen bg-gray-100">
-          {
-            isLoaded ? (<SignIn
-              path="/"
-              routing="path"
-              signUpUrl="/"
-            />) : (
-              <h1>Loading...</h1>
-            )
-          }
+          <div className="bg-white p-8 rounded-xl shadow-md w-full max-w-md">
+            <h1 className="text-2xl font-bold text-center text-indigo-700 mb-6">Login to ChatApp</h1>
+            <form onSubmit={handleLogin}>
+              <div className="mb-4">
+                <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+                  Username
+                </label>
+                <input
+                  type="text"
+                  id="username"
+                  name="username"
+                  value={loginForm.username}
+                  onChange={handleLoginChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
+                  required
+                />
+              </div>
+              <div className="mb-6">
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+                  Password
+                </label>
+                <input
+                  type="password"
+                  id="password"
+                  name="password"
+                  value={loginForm.password}
+                  onChange={handleLoginChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
+                  required
+                />
+              </div>
+              <button
+                type="submit"
+                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 rounded-lg shadow transition"
+              >
+                Login
+              </button>
+            </form>
+          </div>
         </div>
       ) : (
         <div className="container mx-auto p-4 max-w-7xl">
@@ -168,17 +213,19 @@ const App = () => {
             </div>
 
             {/* Right Section */}
-            <SignedIn>
-              <div className="flex items-center gap-4">
-                <div className="text-right">
-                  <p className="text-sm text-gray-600">Welcome back,</p>
-                  <h2 className="text-lg font-semibold text-indigo-700">{fullName}</h2>
-                </div>
-                <UserButton />
+            <div className="flex items-center gap-4">
+              <div className="text-right">
+                <p className="text-sm text-gray-600">Welcome,</p>
+                <h2 className="text-lg font-semibold text-indigo-700">{userName}</h2>
               </div>
-            </SignedIn>
+              <button 
+                onClick={handleLogout}
+                className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg shadow transition"
+              >
+                Logout
+              </button>
+            </div>
           </header>
-
 
           <div className="flex flex-col lg:flex-row gap-6">
             {/* Sidebar */}
@@ -315,4 +362,4 @@ const App = () => {
   )
 }
 
-export default App
+export default App;
