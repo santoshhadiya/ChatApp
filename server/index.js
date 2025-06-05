@@ -5,6 +5,7 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const app = express();
 const chatsRouter=require("./Router/chatsRouter")
+const PORT=process.env.PORT || 3000;
 
 let allRooms = [];
 let roomUsers={};
@@ -86,12 +87,10 @@ app.use("/chats", chatsRouter);
 
 
 //connection
-mongoose.connect("mongodb://localhost:27017/chatapp")
+mongoose.connect("mongodb+srv://santoshhadiya033:Santosh123@chatapp.7cx7bcp.mongodb.net/?retryWrites=true&w=majority&appName=chatApp")
 .then(() => console.log("MongoDB connected successfully!"))
 .catch((err) => console.error("MongoDB connection error:", err));
 
-app
-
-server.listen(3000, () => {
-  console.log("Running at 3000");
+server.listen(PORT, () => {
+  console.log("Running at PORT: "+ PORT);
 });
