@@ -1,10 +1,10 @@
-import React from 'react'
+import React, { useCallback } from 'react'
 import { useState } from 'react';
 import { useEffect } from 'react';
 import { io } from 'socket.io-client';
 import axios from 'axios';
 
-const BACKEND_URL = "https://chatapp-backend-0qe8.onrender.com";
+const BACKEND_URL = "http://localhost:3000" /* "https://chatapp-backend-0qe8.onrender.com"; */
 
 let socket;
 const App = () => {
@@ -16,7 +16,8 @@ const App = () => {
   const [room, setRoom] = useState("");
   const [allRooms, setAllRooms] = useState([]);
   const [roomUsers, setRoomUsers] = useState([]);
-  
+  const [isChangingRoom, setIsChangingRoom] = useState(false);
+
   // Login state
   const [isLogin, setIsLogin] = useState(false);
   const [loginForm, setLoginForm] = useState({
@@ -36,53 +37,67 @@ const App = () => {
       setTmp("Connected with Socket id: " + socket.id)
     });
 
-    socket.on("sendMsg", async (data) => {
-      try {
-        const res = await axios.post(`${BACKEND_URL}/chats`, {
-          room: data.room,
-          message: data.message,
-          user: data.user,
-          auth: data.auth == socket.id
-        });
-        console.log(res.data);
-        const result = res.data;
-
-        SetChats((prev) => [...prev, { 
-          room: result.room, 
-          message: result.message, 
-          user: result.user, 
-          auth: result.auth == socket.id 
-        }]);
-
-      } catch (err) {
-        console.error("Post error:", err);
-      }
-    })
-
     socket.on("addRoomList", (data) => {
-      /* setAllRooms((prev) => {
-        const exists = prev.some((r) => r.roomName === data.room);
-        return exists ? prev : [...prev, { roomName: data.room }];
-      }); */
+      /* Keep this if needed for other purposes */
     });
 
     socket.on("roomList", (data) => {
       setAllRooms(data.map((val) => ({ roomName: val })))
-    })
+    });
 
     socket.on("roomUsers", (users) => {
       setRoomUsers(users);
     });
+
+    return () => {
+      // Clean up all listeners on unmount
+      socket.off("addRoomList");
+      socket.off("roomList");
+      socket.off("roomUsers");
+      socket.disconnect();
+    };
   }, []);
+
+  useEffect(() => {
+    const handleNewMessage = (data) => {
+      if (data.room === room) {
+        SetChats((prev) => [...prev, {
+          room: data.room,
+          message: data.message,
+          user: data.user,
+          auth: data.auth === socket.id
+        }]);
+      }
+    };
+
+    socket.on("sendMsg", handleNewMessage);
+
+    return () => {
+      socket.off("sendMsg", handleNewMessage);
+    };
+  }, [room]);
+
+  {
+    isChangingRoom && (
+      <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+        <div className="bg-white p-4 rounded-lg shadow-lg">
+          Changing rooms...
+        </div>
+      </div>
+    )
+  }
 
   useEffect(() => {
     console.log(chats);
   }, [chats])
 
-  const sendMsg = () => {
+
+
+  const sendMsg = useCallback(() => {
+    if (!room || !msg.trim()) return;
     socket.emit("sendMsg", { msg, userName, room });
-    setMsg("")
-  }
+    setMsg("");
+  }, [room, msg, userName]);
 
   const join = () => {
     if (userName) {
@@ -123,14 +138,31 @@ const App = () => {
     }
   };
 
-  const getRoomData = async (roomName) => {
-    setRoom(roomName);
-    joinRoom();
-    const res = await axios.post(`${BACKEND_URL}/chats/roomChats`, { roomName });
-    SetChats(res.data);
-  }
 
-  // Handle login form changes
+  const getRoomData = async (roomName) => {
+    if (isChangingRoom) return;
+
+    setIsChangingRoom(true);
+    SetChats([]);
+
+    if (room) {
+      socket.emit("leaveRoom", { room });
+    }
+
+    setRoom(roomName);
+
+    try {
+      const res = await axios.post(`${BACKEND_URL}/chats/roomChats`, { roomName });
+      console.log("missing chats: " + res.data);
+      SetChats(res.data);
+      socket.emit("joinRoom", { room: roomName });
+    } catch (err) {
+      console.error("Error changing rooms:", err);
+    } finally {
+      setIsChangingRoom(false);
+    }
+  };
+
   const handleLoginChange = (e) => {
     const { name, value } = e.target;
     setLoginForm(prev => ({
@@ -218,7 +250,7 @@ const App = () => {
                 <p className="text-sm text-gray-600">Welcome,</p>
                 <h2 className="text-lg font-semibold text-indigo-700">{userName}</h2>
               </div>
-              <button 
+              <button
                 onClick={handleLogout}
                 className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg shadow transition"
               >
@@ -254,6 +286,11 @@ const App = () => {
               {/* Room List */}
               <div className="bg-white rounded-xl shadow p-4">
                 <h2 className="font-semibold text-lg mb-3 text-gray-800">Available Rooms</h2>
+                {isChangingRoom && (
+                  <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center">
+                    <div className="bg-white p-4 rounded-lg">Changing rooms...</div>
+                  </div>
+                )}
                 <ul className="space-y-1">
                   {allRooms.map((val, index) => (
                     <li
