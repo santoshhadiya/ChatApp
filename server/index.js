@@ -5,7 +5,7 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const app = express();
 const chatsRouter = require("./Router/chatsRouter");
-const CHATS = require("./Model/chatsModel"); 
+const CHATS = require("./Model/chatsModel");
 const PORT = process.env.PORT || 3000;
 
 let allRooms = [];
@@ -74,6 +74,13 @@ io.on("connection", (socket) => {
     }
   });
 
+  socket.on("typing", (data) => {
+    socket.to(socket.currentRoom).emit("displayTyping", {
+      user: socket.userName,
+      isTyping: data.isTyping,
+    });
+  });
+
   socket.on("disconnect", () => {
     const room = socket.currentRoom;
     if (room && roomUsers[room]) {
@@ -86,29 +93,26 @@ io.on("connection", (socket) => {
     }
   });
 
-
-
-socket.on("sendMsg", async (data) => {
-  const messageObj = {
-    room: data.room,
-    message: data.msg,
-    user: socket.userName,
-    auth: socket.id,
-  };
-
-  io.to(socket.currentRoom).emit("sendMsg", messageObj);
-
-  try {
-    await CHATS.create({
+  socket.on("sendMsg", async (data) => {
+    const messageObj = {
+      room: data.room,
       message: data.msg,
       user: socket.userName,
-      room: data.room,
-    });
-  } catch (err) {
-    console.error("Error saving chat message:", err);
-  }
-});
+      auth: socket.id,
+    };
 
+    io.to(socket.currentRoom).emit("sendMsg", messageObj);
+
+    try {
+      await CHATS.create({
+        message: data.msg,
+        user: socket.userName,
+        room: data.room,
+      });
+    } catch (err) {
+      console.error("Error saving chat message:", err);
+    }
+  });
 
   socket.on("addRoomList", (data) => {
     if (!allRooms.includes(data.room)) {

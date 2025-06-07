@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { io } from 'socket.io-client';
 import axios from 'axios';
 
-const BACKEND_URL = "https://chatapp-backend-0qe8.onrender.com";
+const BACKEND_URL = "https://chatapp-backend-0qe8.onrender.com"
 let socket;
 const App = () => {
   const [tmp, setTmp] = useState("");
@@ -16,6 +16,8 @@ const App = () => {
   const [allRooms, setAllRooms] = useState([]);
   const [roomUsers, setRoomUsers] = useState([]);
   const [isChangingRoom, setIsChangingRoom] = useState(false);
+  const [typingUser, setTypingUser] = useState(null);
+
 
   // Login state
   const [isLogin, setIsLogin] = useState(false);
@@ -48,11 +50,28 @@ const App = () => {
       setRoomUsers(users);
     });
 
+    socket.on("displayTyping", (data) => {
+      if (data.isTyping) {
+        setTypingUser(data.user);
+
+        // Auto-clear after 3 seconds
+        setTimeout(() => {
+          setTypingUser(null);
+        }, 3000);
+      } else {
+        setTypingUser(null);
+      }
+    });
+
+
+
     return () => {
-      // Clean up all listeners on unmount
+
       socket.off("addRoomList");
       socket.off("roomList");
       socket.off("roomUsers");
+      socket.off("displayTyping");
+
       socket.disconnect();
     };
   }, []);
@@ -181,11 +200,19 @@ const App = () => {
 
   // Handle logout
   const handleLogout = () => {
+    if (room) {
+      socket.emit("leaveRoom", { room });
+    }
+
     setUserName("");
     setIsLogin(false);
     setIsJoined(false);
     setLoginForm({ username: '', password: '' });
+    setRoom("");
+    SetChats([]);
+    setRoomUsers([]);
   };
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -244,18 +271,33 @@ const App = () => {
             </div>
 
             {/* Right Section */}
-            <div className="flex items-center gap-4">
-              <div className="text-right">
-                <p className="text-sm text-gray-600">Welcome,</p>
-                <h2 className="text-lg font-semibold text-indigo-700">{userName}</h2>
+            <div className="flex items-center gap-6 bg-gray-100 px-4 py-2 rounded-xl shadow-inner">
+              <div className="text-right leading-tight transition-transform hover:scale-105 duration-300 ease-in-out">
+                <p className="text-xs text-gray-500 tracking-wide">Welcome back,</p>
+                <h2 className="text-xl font-bold text-indigo-700">{userName}</h2>
               </div>
               <button
                 onClick={handleLogout}
-                className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg shadow transition"
+                className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-5 py-2 rounded-full shadow-lg transform transition-transform duration-200 hover:scale-105 active:scale-95"
               >
-                Logout
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 002 2h3a2 2 0 002-2v-1m0-8v-1a2 2 0 00-2-2h-3a2 2 0 00-2 2v1"
+                  />
+                </svg>
+                <span className="font-semibold tracking-wide">Logout</span>
               </button>
             </div>
+
           </header>
 
           <div className="flex flex-col lg:flex-row gap-6">
@@ -333,14 +375,21 @@ const App = () => {
             <div className="w-full lg:w-3/4">
               <div className="bg-white rounded-xl shadow overflow-hidden">
                 {/* Chat Header */}
-                <div className="bg-indigo-600 p-4 text-white">
+                <div className="bg-indigo-600 p-4 text-white flex">
                   <h2 className="text-xl font-semibold">
                     {room ? `Room: ${room}` : 'Select a room to start chatting'}
                   </h2>
+
+                  {typingUser && typingUser !== userName && (
+                    <div className="text-sm text-white italic mb-2 ml-2">
+                      {typingUser} is typing...
+                    </div>
+                  )}
+
                 </div>
 
                 {/* Messages */}
-                <div className="chat-messages h-96 p-4 overflow-y-auto bg-gray-50">
+                <div className="chat-messages h-96 p-4 overflow-y-auto bg-gray-100 bg-[url('https://camo.githubusercontent.com/ebf18cd85f7aa9dc79fb74c58dc94febf3a6441d8d689cd5a400b2707e19ec0e/68747470733a2f2f7765622e77686174736170702e636f6d2f696d672f62672d636861742d74696c652d6461726b5f61346265353132653731393562366237333364393131306234303866303735642e706e67')]  bg-center w-full bg-opacity-[0.5]">
                   {chats.length === 0 ? (
                     <div className="flex items-center justify-center h-full">
                       <p className="text-gray-400">No messages yet. Say hello!</p>
@@ -374,7 +423,13 @@ const App = () => {
                       className="flex-1 border border-gray-300 px-4 py-3 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
                       placeholder="Type your message..."
                       value={msg}
-                      onChange={(e) => setMsg(e.target.value)}
+                      onChange={(e) => {
+                        setMsg(e.target.value);
+                        socket.emit("typing", {
+                          isTyping: true,
+                        });
+                      }}
+
                       onKeyPress={(e) => e.key === 'Enter' && sendMsg()}
                       disabled={!room}
                     />
