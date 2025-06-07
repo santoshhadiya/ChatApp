@@ -4,8 +4,7 @@ import { useEffect } from 'react';
 import { io } from 'socket.io-client';
 import axios from 'axios';
 
-const BACKEND_URL = "http://localhost:3000" /* "https://chatapp-backend-0qe8.onrender.com"; */
-
+const BACKEND_URL = "https://chatapp-backend-0qe8.onrender.com";
 let socket;
 const App = () => {
   const [tmp, setTmp] = useState("");
