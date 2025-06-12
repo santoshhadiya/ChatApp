@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useEffect } from 'react';
 import { io } from 'socket.io-client';
 import axios from 'axios';
+import { useRef } from 'react';
 
 const BACKEND_URL = "https://chatapp-backend-0qe8.onrender.com"
 let socket;
@@ -17,7 +18,9 @@ const App = () => {
   const [roomUsers, setRoomUsers] = useState([]);
   const [isChangingRoom, setIsChangingRoom] = useState(false);
   const [typingUser, setTypingUser] = useState(null);
+  const [showSidebar, setShowSidebar] = useState(true);
 
+  const inputRef = useRef(null);
 
   // Login state
   const [isLogin, setIsLogin] = useState(false);
@@ -95,6 +98,10 @@ const App = () => {
     };
   }, [room]);
 
+  const toggleSidebar = () => {
+    setShowSidebar(!showSidebar);
+  };
+
   {
     isChangingRoom && (
       <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
@@ -115,6 +122,10 @@ const App = () => {
     if (!room || !msg.trim()) return;
     socket.emit("sendMsg", { msg, userName, room });
     setMsg("");
+
+     if (inputRef.current && room) {
+      inputRef.current.focus();
+    }
   }, [room, msg, userName]);
 
   const join = () => {
@@ -263,9 +274,18 @@ const App = () => {
         <div className="container mx-auto p-4 max-w-7xl">
           <header className="bg-white rounded-xl shadow px-6 py-4 mb-6 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
             {/* Left Section */}
-            <div>
+            <div className="flex items-center">
+              {/* Hamburger menu for mobile */}
+              <button
+                onClick={toggleSidebar}
+                className="lg:hidden mr-4 text-indigo-700 focus:outline-none"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
               <h1 className="text-3xl font-extrabold text-indigo-700">ChatApp</h1>
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="text-sm text-gray-500 mt-1 ml-2">
                 Connected as: <span className="font-medium text-indigo-600">{userName}</span>
               </p>
             </div>
@@ -301,11 +321,25 @@ const App = () => {
           </header>
 
           <div className="flex flex-col lg:flex-row gap-6">
+
+         
+
+
             {/* Sidebar */}
-            <div className="w-full lg:w-1/4 space-y-6">
+            <div className={`${showSidebar ? 'block' : 'hidden'} lg:block w-full lg:w-1/4 space-y-6 transition-all duration-300 ease-in-out`}>
               {/* Room Join Section */}
               <div className="bg-white rounded-xl shadow p-4">
-                <h2 className="font-semibold text-lg mb-3 text-gray-800">Join a Room</h2>
+                <div className="flex justify-between items-center mb-3">
+                  <h2 className="font-semibold text-lg text-gray-800">Join a Room</h2>
+                  <button
+                    onClick={toggleSidebar}
+                    className="lg:hidden text-gray-500 hover:text-gray-700"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                    </svg>
+                  </button>
+                </div>
                 <div className="flex gap-2">
                   <input
                     type="text"
@@ -372,7 +406,7 @@ const App = () => {
             </div>
 
             {/* Chat Area */}
-            <div className="w-full lg:w-3/4">
+             <div className={`w-full ${showSidebar ? 'lg:w-3/4' : 'lg:w-full'}`}>
               <div className="bg-white rounded-xl shadow overflow-hidden">
                 {/* Chat Header */}
                 <div className="bg-indigo-600 p-4 text-white flex">
@@ -420,6 +454,7 @@ const App = () => {
                   <div className="flex gap-2">
                     <input
                       type="text"
+                      ref={inputRef}
                       className="flex-1 border border-gray-300 px-4 py-3 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
                       placeholder="Type your message..."
                       value={msg}

@@ -44,9 +44,20 @@ const userChats = async (req, res) => {
     res.status(500).json({ error: "Failed to fetch chats" });
   }
 };
+
+const deleteAllChats = async (req, res) => {
+  try {
+    await CHATS.deleteMany({});
+    res.send({ success: true, message: "All chats deleted!" });
+  } catch (err) {
+    res.status(500).send({ error: "Failed to delete chats" });
+  }
+};
+
 module.exports = {
   getChats,
   setChats,
   sendRoomChats,
   userChats,
+  deleteAllChats,
 };
