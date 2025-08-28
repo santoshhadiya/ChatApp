@@ -5,8 +5,8 @@ import { io } from 'socket.io-client';
 import axios from 'axios';
 import { useRef } from 'react';
 
-/* const BACKEND_URL = "https://chatapp-backend-0qe8.onrender.com" */
-const BACKEND_URL = "http://localhost:3000"
+const BACKEND_URL = "https://chatapp-backend-0qe8.onrender.com" 
+/* const BACKEND_URL = "http://localhost:3000" */
 let socket;
 const ChatApp = () => {
   const [tmp, setTmp] = useState("");
